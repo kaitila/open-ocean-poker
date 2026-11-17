@@ -1,17 +1,19 @@
 // Open Ocean Poker — just-for-fun prediction market. Zero dependencies.
 //   node server.js            (PORT=3000, ADMIN_TOKEN=..., DB_PATH=state/db.json)
+// On Vercel, api/index.js reuses handle() and keeps state in Upstash Redis
+// (KV_REST_API_URL / KV_REST_API_TOKEN, set by Vercel's Upstash integration).
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const LMSR = require('./lib/lmsr');
+const LMSR = require('./public/lmsr');
 
 const PORT = Number(process.env.PORT) || 3000;
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'change-me';
 const DATA_DIR = path.join(__dirname, 'data');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'state', 'db.json');
-const HISTORY_CAP = 400;
+const HISTORY_CAP = 250;
 
 if (ADMIN_TOKEN === 'change-me') console.warn('⚠️  ADMIN_TOKEN not set — using "change-me".');
 
@@ -62,22 +64,54 @@ function buildMarketDefs() {
 }
 
 // ---------------------------------------------------------------- database
-let db = { users: {}, markets: {}, busted: {}, trades: [] };
+const emptyDb = () => ({ users: {}, markets: {}, busted: {}, trades: [] });
+let db = emptyDb();
+let dirty = false;
+function saveDb() { dirty = true; }
 
-function loadDb() {
-  try { db = { ...db, ...JSON.parse(fs.readFileSync(DB_PATH, 'utf8')) }; } catch { /* fresh */ }
-}
+// Storage: a JSON file locally, Upstash Redis (REST) when configured.
+const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+const REDIS_KEY = process.env.REDIS_KEY || 'oop:db';
 
-let saveTimer = null;
-function saveDb() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
+const fileStore = {
+  cache: null,
+  queue: Promise.resolve(),
+  async load() {
+    if (!this.cache) { try { this.cache = JSON.parse(fs.readFileSync(DB_PATH, 'utf8')); } catch { this.cache = emptyDb(); } }
+    return this.cache;
+  },
+  async save(d) {
+    this.cache = d;
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    const tmp = DB_PATH + '.tmp';
-    fs.writeFileSync(tmp, JSON.stringify(db));
-    fs.renameSync(tmp, DB_PATH);
-  }, 150);
+    fs.writeFileSync(DB_PATH + '.tmp', JSON.stringify(d));
+    fs.renameSync(DB_PATH + '.tmp', DB_PATH);
+  },
+  withLock(fn) { const run = this.queue.then(fn, fn); this.queue = run.catch(() => {}); return run; },
+};
+
+async function redis(...cmd) {
+  const r = await fetch(REDIS_URL, { method: 'POST', headers: { Authorization: `Bearer ${REDIS_TOKEN}` }, body: JSON.stringify(cmd) });
+  const j = await r.json();
+  if (j.error) throw new Error(`Storage error: ${j.error}`);
+  return j.result;
 }
+const redisStore = {
+  async load() { const v = await redis('GET', REDIS_KEY); return v ? JSON.parse(v) : emptyDb(); },
+  async save(d) { await redis('SET', REDIS_KEY, JSON.stringify(d)); },
+  async withLock(fn) {
+    const id = crypto.randomBytes(8).toString('hex');
+    const lock = REDIS_KEY + ':lock';
+    for (let i = 0; ; i++) {
+      if (await redis('SET', lock, id, 'NX', 'PX', '8000')) break;
+      if (i > 80) throw new Error('Busy, try again');
+      await new Promise((r) => setTimeout(r, 50 + Math.random() * 50));
+    }
+    try { return await fn(); }
+    finally { await redis('EVAL', "if redis.call('get',KEYS[1])==ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end", '1', lock, id).catch(() => {}); }
+  },
+};
+const store = REDIS_URL && REDIS_TOKEN ? redisStore : fileStore;
 
 function mstate(id) {
   if (!db.markets[id]) db.markets[id] = { q: {}, status: 'open', resolution: null, history: [], volume: 0 };
@@ -215,7 +249,7 @@ function netWorth(u) {
   return v;
 }
 
-function publicState(token) {
+function publicState(token, historyFor) {
   const markets = defs.map((def) => {
     const st = mstate(def.id);
     const act = new Set(activeOutcomes(def));
@@ -224,7 +258,7 @@ function publicState(token) {
       ...def,
       outcomes: def.outcomes.map((o) => ({ ...o, price: p[o.id] || 0, active: st.status !== 'resolved' && act.has(o.id) })),
       q: st.q, status: st.status, resolution: st.resolution, resolvedReason: st.resolvedReason,
-      volume: Math.round(st.volume), history: st.history,
+      volume: Math.round(st.volume), history: def.id === historyFor ? st.history : undefined,
     };
   });
   const leaderboard = Object.values(db.users)
@@ -258,9 +292,8 @@ function readBody(req) {
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.json': 'application/json', '.ico': 'image/x-icon' };
 
 function serveStatic(req, res, pathname) {
-  if (pathname === '/lmsr.js') pathname = '/../lib/lmsr.js';
   let file = path.normalize(path.join(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname));
-  const allowed = file.startsWith(PUBLIC_DIR) || file === path.join(__dirname, 'lib', 'lmsr.js');
+  const allowed = file.startsWith(PUBLIC_DIR);
   if (!allowed || !fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(PUBLIC_DIR, 'index.html');
   res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
   fs.createReadStream(file).pipe(res);
@@ -273,7 +306,8 @@ function isAdmin(req) {
 }
 
 const routes = {
-  'GET /api/state': (req, res, body, url) => send(res, 200, publicState(url.searchParams.get('token'))),
+  // NOTE: handlers must stay synchronous (see handle()).
+  'GET /api/state': (req, res, body, url) => send(res, 200, publicState(url.searchParams.get('token'), url.searchParams.get('history'))),
 
   'POST /api/join': (req, res, body) => {
     const name = String(body.name || '').trim().replace(/\s+/g, ' ').slice(0, 40);
@@ -330,7 +364,9 @@ const routes = {
   },
 };
 
-const server = http.createServer(async (req, res) => {
+// Runs one API request against freshly loaded state; writes are serialised by a lock
+// and the response is only sent after the new state is stored.
+async function handle(req, res) {
   const url = new URL(req.url, 'http://x');
   const key = `${req.method} ${url.pathname}`;
   const handler = routes[key];
@@ -339,17 +375,30 @@ const server = http.createServer(async (req, res) => {
     return serveStatic(req, res, decodeURIComponent(url.pathname));
   }
   if (url.pathname.startsWith('/api/admin/') && !isAdmin(req)) return send(res, 403, { error: 'Wrong admin token' });
+  const out = { code: 200, headers: {}, body: '' };
+  const shim = { writeHead(c, h) { out.code = c; out.headers = h; }, end(b) { out.body = b; } };
   try {
-    const body = req.method === 'POST' ? await readBody(req) : {};
-    await handler(req, res, body, url);
+    const body = req.method === 'POST' ? (req.body && typeof req.body === 'object' ? req.body : await readBody(req)) : {};
+    const run = async () => {
+      db = { ...emptyDb(), ...(await store.load()) };
+      dirty = false;
+      ensureMarkets();
+      runAutoResolvers();
+      handler(req, shim, body, url); // synchronous, so `db` can't be swapped by another request mid-way
+      const mine = db, changed = dirty;
+      if (changed && req.method === 'POST') await store.save(mine);
+    };
+    if (req.method === 'POST') await store.withLock(run); else await run();
   } catch (e) {
-    send(res, 400, { error: e.message });
+    out.code = 400; out.headers = { 'Content-Type': 'application/json' }; out.body = JSON.stringify({ error: e.message });
   }
-});
+  res.writeHead(out.code, out.headers);
+  res.end(out.body);
+}
 
 loadData();
-loadDb();
-ensureMarkets();
-runAutoResolvers();
-saveDb();
-server.listen(PORT, () => console.log(`♠️  Open Ocean Poker market on http://localhost:${PORT}`));
+module.exports = { handle };
+
+if (require.main === module) {
+  http.createServer(handle).listen(PORT, () => console.log(`♠️  Open Ocean Poker market on http://localhost:${PORT} (${store === redisStore ? 'redis' : 'file'} storage)`));
+}

@@ -59,7 +59,11 @@
 
   async function refresh() {
     try {
-      S = await api(`/api/state${token ? `?token=${encodeURIComponent(token)}` : ''}`);
+      const r0 = route();
+      const qs = new URLSearchParams();
+      if (token) qs.set('token', token);
+      if (r0.name === 'm' && r0.id) qs.set('history', r0.id);
+      S = await api(`/api/state?${qs}`);
       if (token && !S.me) { token = null; LS.set('oop_token', null); }
     } catch (e) { if (!S) { app.innerHTML = `<div class="page"><div class="card empty">Can't reach the market server. Retrying…</div></div>`; } return; }
     renderNav();
@@ -325,7 +329,7 @@
 
   function chart(m, cmap) {
     const ids = Object.keys(cmap);
-    const hist = [...m.history];
+    const hist = [...(m.history || [])];
     const nowP = {}; m.outcomes.forEach((o) => { nowP[o.id] = o.price; });
     hist.push({ t: Math.max(Date.now(), (hist[hist.length - 1] || {}).t || 0), p: nowP });
     const W = 600, H = 220, L = 4, R = 40, T = 10, B = 24;
@@ -357,7 +361,7 @@
       const m = marketById(wrap.dataset.chart); if (!m) return;
       const svg = $('svg', wrap), tip = $('.chart-tip', wrap), xh = $('.xhair', wrap), hit = $('.hit', wrap);
       const cmap = colorMaps[m.id] || chartColors(m); const ids = Object.keys(cmap);
-      const hist = [...m.history, { t: Date.now(), p: Object.fromEntries(m.outcomes.map((o) => [o.id, o.price])) }];
+      const hist = [...(m.history || []), { t: Date.now(), p: Object.fromEntries(m.outcomes.map((o) => [o.id, o.price])) }];
       const W = 600, L = 4, R = 40; const t0 = hist[0].t, t1 = Math.max(hist[hist.length - 1].t, t0 + 60000);
       const move = (ev) => {
         const rect = svg.getBoundingClientRect();
@@ -549,7 +553,7 @@
     if ($('#quote')) updateQuote();
   }
 
-  window.addEventListener('hashchange', () => { window.scrollTo(0, 0); render(); renderNav(); });
+  window.addEventListener('hashchange', () => { window.scrollTo(0, 0); render(); renderNav(); if (route().name === 'm') { refresh.done = false; refresh(); } });
 
   // ------------------------------------------------------------ events
   document.addEventListener('click', async (e) => {
@@ -625,5 +629,5 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
 
   refresh();
-  setInterval(refresh, 4000);
+  setInterval(refresh, 5000);
 })();

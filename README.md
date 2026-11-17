@@ -23,6 +23,14 @@ Organisers go to **`/#/admin`**, enter the `ADMIN_TOKEN`, and from there can:
 - **Pause, reopen or resolve** any market by hand.
 - **Reload data files** after importing players. No restart needed.
 
+## Deploy on Vercel
+
+1. Import the repo in Vercel (Add New → Project). No build settings are needed; `vercel.json` handles them.
+2. In the project, open **Storage → Create → Upstash for Redis** and connect it. This sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`, which hold the shared market state.
+3. Add an env var `ADMIN_TOKEN` (your organiser password), then redeploy.
+
+Without Redis env vars the API falls back to a local JSON file, which does not persist on Vercel.
+
 ## Importing the real tables and players
 
 The repo ships with 40 obviously fictional placeholder players across 5 tables. To replace them, fill in a CSV like `data/players.example.csv`:
@@ -56,7 +64,8 @@ Then click **Reload data files** in the admin page. You can also edit `data/play
 
 ```
 server.js            HTTP server, JSON API, persistence, auto-resolution
-lib/lmsr.js          market maker math (shared with the browser)
+api/index.js         Vercel function entry (wraps server.js)
+public/lmsr.js       market maker math (shared by server and browser)
 public/              single-page frontend (vanilla JS, no build step)
 data/                event, tables, players, prop markets
 scripts/             CSV import + sample data generator

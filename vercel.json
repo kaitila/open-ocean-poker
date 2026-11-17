@@ -1,0 +1,8 @@
+{
+  "outputDirectory": "public",
+  "buildCommand": "",
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/index" }],
+  "functions": {
+    "api/index.js": { "includeFiles": "{data/**,public/lmsr.js}", "maxDuration": 15 }
+  }
+}
