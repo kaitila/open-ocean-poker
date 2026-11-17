@@ -1,0 +1,14 @@
+{
+  "name": "open-ocean-poker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Just-for-fun prediction market for the OpenOcean × Insight Partners Legendary Slush Poker Tournament",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "ADMIN_TOKEN=dev node --watch server.js",
+    "import": "node scripts/import-csv.js",
+    "sample": "node scripts/make-sample-data.js"
+  },
+  "engines": { "node": ">=18" }
+}

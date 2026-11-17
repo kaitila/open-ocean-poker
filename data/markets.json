@@ -1,0 +1,45 @@
+[
+  {
+    "id": "winner-role",
+    "question": "Who takes down the tournament?",
+    "category": "Props",
+    "kind": "choice",
+    "outcomes": [
+      { "id": "founder", "label": "A founder" },
+      { "id": "investor", "label": "An investor" },
+      { "id": "operator", "label": "An operator / other" }
+    ],
+    "autoResolve": "winnerRole",
+    "description": "Resolves to the role of the tournament winner, based on their player profile."
+  },
+  {
+    "id": "first-timer",
+    "question": "Will a first-time player win it all?",
+    "category": "Props",
+    "kind": "binary",
+    "autoResolve": "winnerFirstTimer",
+    "description": "Some of the deepest runs in past tournaments came from first-time players. Resolves YES if the winner has never played this tournament before."
+  },
+  {
+    "id": "first-out",
+    "question": "Which table loses a player first?",
+    "category": "Props",
+    "kind": "tables",
+    "autoResolve": "firstBustTable",
+    "description": "Resolves to the starting table of the first player to bust."
+  },
+  {
+    "id": "host-final-table",
+    "question": "Will someone from OpenOcean, Insight or AWS make the final table?",
+    "category": "Props",
+    "kind": "binary",
+    "description": "Resolves YES if at least one player from a host firm sits at the final table. Resolved by the organisers."
+  },
+  {
+    "id": "finish-time",
+    "question": "Will the final hand be played before 23:00?",
+    "category": "Props",
+    "kind": "binary",
+    "description": "Helsinki time. Resolved by the organisers when the winner is crowned."
+  }
+]

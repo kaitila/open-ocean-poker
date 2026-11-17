@@ -1,0 +1,3 @@
+name,table,seat,title,company,role,photo,linkedin,bio,first_timer,host
+Jane Doe,A,1,Co-founder & CEO,Example AI,founder,https://example.com/jane.jpg,https://www.linkedin.com/in/janedoe,"Plays tight, bluffs on the river.",yes,no
+John Roe,A,2,Partner,Example Ventures,investor,,,,no,yes

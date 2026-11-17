@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Slush Poker Market</title>
+  <meta name="description" content="A just-for-fun prediction market for the OpenOcean × Insight Partners Legendary Slush Poker Tournament.">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="page-bg" aria-hidden="true"><div class="page-bg-img"></div></div>
+
+  <header class="nav">
+    <div class="nav-inner">
+      <a href="#/" class="nav-logo" aria-label="Home">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 2c3.5 3.6 7 6.3 7 10a4 4 0 0 1-6.2 3.3l.9 4.7h-3.4l.9-4.7A4 4 0 0 1 5 12c0-3.7 3.5-6.4 7-10Z"/></svg>
+      </a>
+      <nav class="nav-links">
+        <a href="#/" data-nav="home">Event</a>
+        <a href="#/markets" data-nav="markets">Markets</a>
+        <a href="#/players" data-nav="players">Players</a>
+        <a href="#/leaderboard" data-nav="leaderboard">Leaderboard</a>
+      </nav>
+      <div class="nav-right">
+        <span class="nav-time" id="nav-time"></span>
+        <div id="nav-user"></div>
+      </div>
+    </div>
+  </header>
+
+  <main id="app" class="container"></main>
+
+  <footer class="footer container">
+    <div>Just for fun. Play chips only, no real money involved.</div>
+    <div><a href="#/how">How it works</a> · <a href="#/admin">Organisers</a></div>
+  </footer>
+
+  <div id="modal-root"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="/lmsr.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>

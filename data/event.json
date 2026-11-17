@@ -1,0 +1,39 @@
+{
+  "name": "OpenOcean × Insight Partners Legendary Slush Poker Tournament ♠️♥️♣️♦️",
+  "shortName": "Legendary Slush Poker Tournament",
+  "lumaUrl": "https://luma.com/b8jgl5yz",
+  "coverUrl": "https://images.lumacdn.com/uploads/6a/d13e100f-b583-49a8-85b5-2336db4d37dd.png",
+  "startsAt": "2026-11-17T17:00:00.000Z",
+  "endsAt": "2026-11-17T22:00:00.000Z",
+  "timezone": "Europe/Helsinki",
+  "venue": "Valkoinen sali",
+  "address": "Aleksanterinkatu 16-18, 00170 Helsinki, Finland",
+  "mapsUrl": "https://maps.google.com/?q=Valkoinen+sali,+Aleksanterinkatu+16-18,+00170+Helsinki",
+  "hosts": [
+    {
+      "name": "OpenOcean",
+      "url": "https://www.openocean.vc/",
+      "linkedin": "https://www.linkedin.com/company/openoceanvc"
+    },
+    {
+      "name": "Insight Partners",
+      "url": "https://www.insightpartners.com/",
+      "linkedin": "https://www.linkedin.com/company/insight--partners"
+    },
+    {
+      "name": "AWS",
+      "url": "https://aws.amazon.com/"
+    }
+  ],
+  "about": [
+    "This much-loved tradition on Slush Day 0 returns to the elegant Valkoinen Sali on November 17 at 7 p.m. Once the final hand has been played, the night continues with an after-party featuring great conversations, music, and complimentary drinks.",
+    "This side-show is a just-for-fun prediction market. Everyone gets 1,000 play chips to back the players, tables and props they believe in. Prices move with every trade, players drop out of the markets as they bust, and the best forecaster of the night gets bragging rights. No real money, ever."
+  ],
+  "startingChips": 1000,
+  "liquidity": {
+    "_comment": "LMSR b parameter: higher = prices move less per chip. Scale up with a bigger crowd.",
+    "winner": 1500,
+    "table": 500,
+    "props": 400
+  }
+}
